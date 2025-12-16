@@ -23,7 +23,7 @@ void tampilkanMenu() {
     printf("5. Cari Barang (ID/Stok)\n");
     printf("6. Keluar\n");
     printf("7. Urutkan Barang Berdasarkan Stok\n");
-    printf("8. Simpan Ke Inventaris\n");
+   
 }
 
 void simpanKeJSON(const char *namaFile) {
@@ -383,13 +383,12 @@ int main(){
                 caribarang(); 
                 break;
             case 6:
+                printf("Menyimpan data sebelum keluar...\n");
+                simpanKeJSON("inventaris.json"); 
                 printf("Keluar dari program.\n");
                 break;
             case 7:
                 urutkanBarang();
-                break;
-            case 8:
-                simpanKeJSON("inventaris.json");
                 break;
             default:
                 printf("Pilihan tidak valid. Silakan coba lagi.\n");
