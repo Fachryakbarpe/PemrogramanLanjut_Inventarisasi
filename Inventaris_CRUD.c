@@ -30,9 +30,10 @@ void simpanKeJSON(const char *namaFile) {
     FILE *fp = fopen(namaFile, "w");
     if (fp == NULL) {
         printf("Gagal membuka file untuk menyimpan data.\n");
+        perror("Error");
         return;
     }
-
+    printf("DEBUG: Menyimpan %d barang...\n", jumlah_barang);
     fprintf(fp, "[\n");
     for (int i = 0; i < jumlah_barang; i++) {
         fprintf(fp,
@@ -55,39 +56,71 @@ void simpanKeJSON(const char *namaFile) {
 
 void bacaDariJSON(const char *namaFile) {
     FILE *fp = fopen(namaFile, "r");
-    if (fp == NULL) return;
+    if (fp == NULL) {
+        printf("File belum ada, akan dibuat saat menyimpan.\n");
+        return;
+    }
 
     jumlah_barang = 0;
-    char line[512]; 
+    char buffer[1024];
+    
+    // Baca seluruh file
+    fseek(fp, 0, SEEK_END);
+    long fileSize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    
+    if (fileSize == 0) {
+        fclose(fp);
+        printf("File JSON kosong.\n");
+        return;
+    }
 
-    if (fgets(line, sizeof(line), fp) == NULL) { fclose(fp); return; }
-
-    while (fgets(line, sizeof(line), fp) != NULL && jumlah_barang < MAX_BARANG) {
-        if (strstr(line, "\"id\"")) {
+    // Skip baris pertama '['
+    fgets(buffer, sizeof(buffer), fp);
+    
+    while (fgets(buffer, sizeof(buffer), fp) != NULL && jumlah_barang < MAX_BARANG) {
+        // Skip whitespace dan cek apakah ini baris '{'
+        char *trimmed = buffer;
+        while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+        
+        if (*trimmed == '{') {
             Barang b;
-
-            // 1. Baca ID
-            if (sscanf(line, " %*s \"id\": \"%9[^\"]\",", b.id) != 1) continue; 
+            memset(&b, 0, sizeof(Barang)); // Clear struct
             
-            // 2. Baca Baris Nama 
-            if (fgets(line, sizeof(line), fp) == NULL) break;
-            if (sscanf(line, " %*s \"nama\": \"%49[^\"]\",", b.nama) != 1) continue;
+            // Baca id
+            if (fgets(buffer, sizeof(buffer), fp) == NULL) break;
+            char *idStart = strstr(buffer, "\"id\"");
+            if (idStart) {
+                sscanf(idStart, "\"id\": \"%9[^\"]\"", b.id);
+            }
             
-            // 3. Baca Baris Jumlah
-            if (fgets(line, sizeof(line), fp) == NULL) break;
-            if (sscanf(line, " %*s \"jumlah\": %d", &b.jumlah) != 1) continue;
+            // Baca nama
+            if (fgets(buffer, sizeof(buffer), fp) == NULL) break;
+            char *namaStart = strstr(buffer, "\"nama\"");
+            if (namaStart) {
+                sscanf(namaStart, "\"nama\": \"%254[^\"]\"", b.nama);
+            }
             
-            // 4. Lewati Baris Penutup (misalnya, '}%s')
-            if (fgets(line, sizeof(line), fp) == NULL) break; 
+            // Baca jumlah
+            if (fgets(buffer, sizeof(buffer), fp) == NULL) break;
+            char *jumlahStart = strstr(buffer, "\"jumlah\"");
+            if (jumlahStart) {
+                sscanf(jumlahStart, "\"jumlah\": %d", &b.jumlah);
+            }
             
-            inventaris[jumlah_barang++] = b;
+            // Skip baris penutup '}' atau '},'
+            fgets(buffer, sizeof(buffer), fp);
+            
+            // Validasi data sebelum disimpan
+            if (strlen(b.id) > 0 && strlen(b.nama) > 0) {
+                inventaris[jumlah_barang++] = b;
+            }
         }
     }
     
     fclose(fp);
     printf("Data berhasil dibaca dari file JSON. Total: %d barang.\n", jumlah_barang);
 }
-
 void tambahBarang() {
     // 1. Cek kapasitas array
     if (jumlah_barang >= MAX_BARANG) {
@@ -142,6 +175,7 @@ void updateStok() {
             scanf("%d", &jumlah_baru);
             inventaris[i].jumlah = jumlah_baru;
             printf("Stok barang berhasil diupdate.\n");
+            simpanKeJSON("inventaris.json"); 
             return;
         }
     }
@@ -159,12 +193,12 @@ void hapusBarang() {
             }
             jumlah_barang--;
             printf("Barang dengan ID %s berhasil dihapus.\n", id);
+            simpanKeJSON("inventaris.json"); 
             return;
         }
     }
     printf("Barang dengan ID %s tidak ditemukan.\n", id);
 }
-
 // --- FUNGSI SORTING (QUICK SORT) ---
 
 void swapBarang(Barang* a, Barang* b){
