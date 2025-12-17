@@ -122,7 +122,7 @@ void bacaDariJSON(const char *namaFile) {
     printf("Data berhasil dibaca dari file JSON. Total: %d barang.\n", jumlah_barang);
 }
 void tambahBarang() {
-    // 1. Cek kapasitas array
+    // 1. Cek kaploasitas array
     if (jumlah_barang >= MAX_BARANG) {
         printf("Inventaris penuh. Tidak bisa menambah barang baru.\n");
         return;
